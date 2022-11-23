@@ -335,10 +335,9 @@ class RTPClient:
         self.outSSRC = random.randint(1000, 65530)
 
     def start(self) -> None:
-        self.sin = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sout = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sin.bind((self.inIP, self.inPort))
-        self.sin.setblocking(False)
+        self.s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.s.bind((self.inIP, self.inPort))
+        self.s.setblocking(False)
 
         r = Timer(0, self.recv)
         r.name = "RTP Receiver"
@@ -349,8 +348,7 @@ class RTPClient:
 
     def stop(self) -> None:
         self.NSD = False
-        self.sin.close()
-        self.sout.close()
+        self.s.close()
 
     def read(self, length: int = 160, blocking: bool = True) -> bytes:
         if not blocking:
@@ -368,7 +366,7 @@ class RTPClient:
     def recv(self) -> None:
         while self.NSD:
             try:
-                packet = self.sin.recv(8192)
+                packet = self.s.recv(8192)
                 self.parsePacket(packet)
             except BlockingIOError:
                 time.sleep(0.01)
@@ -398,7 +396,7 @@ class RTPClient:
             # debug(payload)
 
             try:
-                self.sout.sendto(packet, (self.outIP, self.outPort))
+                self.s.sendto(packet, (self.outIP, self.outPort))
             except OSError:
                 warnings.warn(
                     "RTP Packet failed to send!",
