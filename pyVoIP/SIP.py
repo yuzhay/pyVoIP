@@ -820,7 +820,7 @@ class SIPClient:
         self.myPort = myPort
 
         self.default_expires = 120
-        self.register_timeout = 30
+        self.register_timeout = 100
 
         self.inviteCounter = Counter()
         self.registerCounter = Counter()
