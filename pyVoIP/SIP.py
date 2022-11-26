@@ -820,7 +820,7 @@ class SIPClient:
         self.myPort = myPort
 
         self.default_expires = 120
-        self.register_timeout = 100
+        self.register_timeout = 30
 
         self.inviteCounter = Counter()
         self.registerCounter = Counter()
@@ -1740,6 +1740,7 @@ class SIPClient:
                     debug("\nRECEIVED")
                     debug(response.summary())
                     debug("=" * 50)
+                    print(response.summary())
                     raise InvalidAccountInfoError(
                         "Invalid Username or "
                         + "Password for SIP server "
