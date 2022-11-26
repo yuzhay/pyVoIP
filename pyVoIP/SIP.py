@@ -1780,7 +1780,7 @@ class SIPClient:
         debug(response.raw)
 
         self.recvLock.release()
-        if response.status == SIPStatus.OK or response.status == SIPStatus.REQUEST_PENDING:
+        if response.status == SIPStatus.OK:
             print(response.status)
             if self.NSD:
                 # self.subscribe(response)
