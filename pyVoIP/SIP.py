@@ -1780,6 +1780,7 @@ class SIPClient:
 
         self.recvLock.release()
         if response.status == SIPStatus.OK or response.status == SIPStatus.REQUEST_PENDING:
+            print(response.status)
             if self.NSD:
                 # self.subscribe(response)
                 self.registerThread = Timer(
