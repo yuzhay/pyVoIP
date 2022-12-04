@@ -1664,36 +1664,13 @@ class SIPClient:
                 if response.status == SIPStatus(401):
                     # At this point, it's reasonable to assume that
                     # this is caused by invalid credentials.
-                    print("Seemingly invalid credentials")
-                    if response.authentication["stale"] == "true":
-                        print("Stale is TRUE")
-                        reg_request = self.gen_register(response)
-                        self.send_message(reg_request)
-                        ready = select.select(
-                            [self.s], [], [], self.register_timeout
-                        )
-                        if ready[0]:
-                            resp = self.s.recv(8192)
-                            response = SIPMessage(resp)
-                            if response.status == SIPStatus(401):
-                                print("Still didn't work")
-                                raise InvalidAccountInfoError(
-                                    "Invalid Username or "
-                                    + "Password for SIP server "
-                                    + f"{self.sip_server.get_address()}:"
-                                    + f"{self.sip_server.get_port()}"
-                                )
-                            else:
-                                print("Probably it worked")
-                    else:
-                        print("Okay the account really is not right!")
-                        raise InvalidAccountInfoError(
-                            "Invalid Username or "
-                            + "Password for SIP server "
-                            + f"{self.sip_server.get_address()}:"
-                            + f"{self.sip_server.get_port()}"
-                        )
-
+                    debug("Unauthorized")
+                    raise InvalidAccountInfoError(
+                        "Invalid Username or "
+                        + "Password for SIP server "
+                        + f"{self.server}:"
+                        + f"{self.myPort}"
+                    )
                 elif response.status == SIPStatus(400):
                     # Bad Request
                     # TODO: implement
@@ -1752,24 +1729,35 @@ class SIPClient:
                 if response.status == SIPStatus(401):
                     # At this point, it's reasonable to assume that
                     # this is caused by invalid credentials.
-                    debug("=" * 50)
-                    debug("Unauthorized, SIP Message Log:\n")
-                    debug("SENT")
-                    debug(firstRequest)
-                    debug("\nRECEIVED")
-                    debug(first_response.summary())
-                    debug("\nSENT (DO NOT SHARE THIS PACKET)")
-                    debug(regRequest)
-                    debug("\nRECEIVED")
-                    debug(response.summary())
-                    debug("=" * 50)
-                    print(response.summary())
-                    raise InvalidAccountInfoError(
-                        "Invalid Username or "
-                        + "Password for SIP server "
-                        + f"{self.server}:"
-                        + f"{self.myPort}"
-                    )
+                    print("Seemingly invalid credentials")
+                    if response.authentication["stale"] == "true":
+                        print("Stale is TRUE")
+                        reg_request = self.gen_register(response)
+                        self.send_message(reg_request)
+                        ready = select.select(
+                            [self.s], [], [], self.register_timeout
+                        )
+                        if ready[0]:
+                            resp = self.s.recv(8192)
+                            response = SIPMessage(resp)
+                            if response.status == SIPStatus(401):
+                                print("Still didn't work")
+                                raise InvalidAccountInfoError(
+                                    "Invalid Username or "
+                                    + "Password for SIP server "
+                                    + f"{self.sip_server.get_address()}:"
+                                    + f"{self.sip_server.get_port()}"
+                                )
+                            else:
+                                print("Probably it worked")
+                    else:
+                        print("Okay the account really is not right!")
+                        raise InvalidAccountInfoError(
+                            "Invalid Username or "
+                            + "Password for SIP server "
+                            + f"{self.sip_server.get_address()}:"
+                            + f"{self.sip_server.get_port()}"
+                        )
                 elif response.status == SIPStatus(400):
                     # Bad Request
                     # TODO: implement
