@@ -1748,8 +1748,8 @@ class SIPClient:
                                 raise InvalidAccountInfoError(
                                     "Invalid Username or "
                                     + "Password for SIP server "
-                                    + f"{self.sip_server.get_address()}:"
-                                    + f"{self.sip_server.get_port()}"
+                                    + f"{self.server}:"
+                                    + f"{self.myPort}"
                                 )
                             else:
                                 print("Probably it worked")
@@ -1758,8 +1758,8 @@ class SIPClient:
                         raise InvalidAccountInfoError(
                             "Invalid Username or "
                             + "Password for SIP server "
-                            + f"{self.sip_server.get_address()}:"
-                            + f"{self.sip_server.get_port()}"
+                            + f"{self.server}:"
+                            + f"{self.myPort}"
                         )
                 elif response.status == SIPStatus(400):
                     # Bad Request
