@@ -1201,6 +1201,8 @@ class SIPClient:
     def gen_register(self, request: SIPMessage, deregister=False) -> str:
         response = str(self.genAuthorization(request), "utf8")
         nonce = request.authentication["nonce"]
+        print("-----------NONCE-------------")
+        print(nonce)
         realm = request.authentication["realm"]
 
         regRequest = f"REGISTER sip:{self.server} SIP/2.0\r\n"
