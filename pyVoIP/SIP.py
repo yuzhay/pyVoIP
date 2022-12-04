@@ -1733,7 +1733,10 @@ class SIPClient:
                     if response.authentication["stale"] == "true":
                         print("Stale is TRUE")
                         reg_request = self.gen_register(response)
-                        self.send_message(reg_request)
+                        self.out.sendto(
+                            reg_request.encode("utf8"),
+                            (self.server, self.port),
+                        )
                         ready = select.select(
                             [self.s], [], [], self.register_timeout
                         )
