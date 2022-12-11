@@ -1057,21 +1057,36 @@ class SIPClient:
         )
         return self.gen_authorization(request)
 
-    def gen_authorization(self, request: SIPMessage) -> bytes:
+    def gen_authorization(self, request):
+        # debug('INFO', f'{self.__class__.__name__}.{inspect.stack()[0][3]} called from '
+        #                 f'{inspect.stack()[1][0].f_locals["self"].__class__.__name__}.{inspect.stack()[1][3]} start')
         realm = request.authentication["realm"]
-        HA1 = self.username + ":" + realm + ":" + self.password
-        HA1 = hashlib.md5(HA1.encode("utf8")).hexdigest()
-        HA2 = (
-            ""
-            + request.headers["CSeq"]["method"]
-            + ":sip:"
-            + self.server
-            + ";transport=UDP"
-        )
-        HA2 = hashlib.md5(HA2.encode("utf8")).hexdigest()
         nonce = request.authentication["nonce"]
-        response = (HA1 + ":" + nonce + ":" + HA2).encode("utf8")
-        response = hashlib.md5(response).hexdigest().encode("utf8")
+
+        ha1 = f"{self.username}:{realm}:{self.password}"
+        ha1 = hashlib.md5(ha1.encode("utf8")).hexdigest()
+        ha2 = f'{request.headers["CSeq"]["method"]}:sip:{self.sip_server.get_address()};transport=UDP'
+        ha2 = hashlib.md5(ha2.encode("utf8")).hexdigest()
+
+        if request.authentication.get(
+            "qop"
+        ) and "auth" in request.authentication.get("qop"):
+            cnonce = self.gen_tag()
+            nonce_count = self.nonce_count.next()
+            response = (
+                f"{ha1}:{nonce}:{nonce_count}:{cnonce}:auth:{ha2}".encode(
+                    "utf8"
+                )
+            )
+            response = hashlib.md5(response).hexdigest().encode("utf8")
+            response = (
+                f'qop="auth",nc="{nonce_count}",cnonce="{cnonce}",'
+                f'response="{str(response, "utf8")}"'
+            )
+        else:
+            response = f"{ha1}:{nonce}:{ha2}".encode("utf8")
+            response = hashlib.md5(response).hexdigest().encode("utf8")
+            response = f'response="{str(response, "utf8")}"'
 
         return response
 
@@ -1199,10 +1214,8 @@ class SIPClient:
         return self.gen_register(request, deregister)
 
     def gen_register(self, request: SIPMessage, deregister=False) -> str:
-        response = str(self.genAuthorization(request), "utf8")
+        response = self.gen_authorization(request)
         nonce = request.authentication["nonce"]
-        print("-----------NONCE-------------")
-        print(nonce)
         realm = request.authentication["realm"]
 
         regRequest = f"REGISTER sip:{self.server} SIP/2.0\r\n"
@@ -1238,8 +1251,8 @@ class SIPClient:
         regRequest += (
             f'Authorization: Digest username="{self.username}",'
             + f'realm="{realm}",nonce="{nonce}",'
-            + f'uri="sip:{self.server};transport=UDP",'
-            + f'response="{response}",algorithm=MD5\r\n'
+            + f'uri="sip:{self.sip_server.get_address()};transport=UDP",'
+            f"{response},algorithm=MD5\r\n"
         )
         regRequest += "Content-Length: 0"
         regRequest += "\r\n\r\n"
@@ -1719,7 +1732,7 @@ class SIPClient:
 
         if response.status == SIPStatus(401):
             # Unauthorized, likely due to being password protected.
-            regRequest = self.genRegister(response)
+            regRequest = self.gen_register(response)
             self.out.sendto(
                 regRequest.encode("utf8"), (self.server, self.port)
             )
@@ -1732,7 +1745,11 @@ class SIPClient:
                     # At this point, it's reasonable to assume that
                     # this is caused by invalid credentials.
                     print("Seemingly invalid credentials")
-                    if response.authentication["stale"] == "true":
+                    if (
+                        response.authentication.get("stale")
+                        == "true"
+                        == "true"
+                    ):
                         print("Stale is TRUE")
                         reg_request = self.gen_register(response)
                         self.out.sendto(
