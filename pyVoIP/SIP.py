@@ -1066,7 +1066,7 @@ class SIPClient:
 
         ha1 = f"{self.username}:{realm}:{self.password}"
         ha1 = hashlib.md5(ha1.encode("utf8")).hexdigest()
-        ha2 = f'{request.headers["CSeq"]["method"]}:sip:{self.server.get_address()};transport=UDP'
+        ha2 = f'{request.headers["CSeq"]["method"]}:sip:{self.server};transport=UDP'
         ha2 = hashlib.md5(ha2.encode("utf8")).hexdigest()
 
         if request.authentication.get(
@@ -1252,7 +1252,7 @@ class SIPClient:
         regRequest += (
             f'Authorization: Digest username="{self.username}",'
             + f'realm="{realm}",nonce="{nonce}",'
-            + f'uri="sip:{self.sip_server.get_address()};transport=UDP",'
+            + f'uri="sip:{self.server};transport=UDP",'
             f"{response},algorithm=MD5\r\n"
         )
         regRequest += "Content-Length: 0"
