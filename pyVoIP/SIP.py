@@ -828,6 +828,7 @@ class SIPClient:
         self.byeCounter = Counter()
         self.callID = Counter()
         self.sessID = Counter()
+        self.nonce_count = Counter()
 
         self.urnUUID = self.gen_urn_uuid()
 
@@ -1065,7 +1066,7 @@ class SIPClient:
 
         ha1 = f"{self.username}:{realm}:{self.password}"
         ha1 = hashlib.md5(ha1.encode("utf8")).hexdigest()
-        ha2 = f'{request.headers["CSeq"]["method"]}:sip:{self.sip_server.get_address()};transport=UDP'
+        ha2 = f'{request.headers["CSeq"]["method"]}:sip:{self.server.get_address()};transport=UDP'
         ha2 = hashlib.md5(ha2.encode("utf8")).hexdigest()
 
         if request.authentication.get(
