@@ -1233,7 +1233,8 @@ class SIPClient:
             f'To: "{self.username}" '
             + f"<sip:{self.username}@{self.server}>\r\n"
         )
-        regRequest += f"Call-ID: {self.genCallID()}\r\n"
+        #regRequest += f"Call-ID: {self.genCallID()}\r\n"
+        regRequest += f'Call-ID: {request.headers["Call-ID"]}\r\n'
         regRequest += f"CSeq: {self.registerCounter.next()} REGISTER\r\n"
         regRequest += (
             "Contact: "
