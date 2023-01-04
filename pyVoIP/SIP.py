@@ -1747,6 +1747,7 @@ class SIPClient:
                     # At this point, it's reasonable to assume that
                     # this is caused by invalid credentials.
                     print("Seemingly invalid credentials")
+                    print(response.authentication)
                     if response.authentication.get("stale") == "true":
                         print("Stale is TRUE")
                         reg_request = self.gen_register(response)
