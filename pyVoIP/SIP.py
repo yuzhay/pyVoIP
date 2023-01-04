@@ -1075,13 +1075,13 @@ class SIPClient:
             cnonce = self.gen_tag()
             nonce_count = self.nonce_count.next()
             response = (
-                f"{ha1}:{nonce}:{nonce_count}:{cnonce}:auth:{ha2}".encode(
+                f"{ha1}:{nonce}:{nonce_count:08x}:{cnonce}:auth:{ha2}".encode(
                     "utf8"
                 )
             )
             response = hashlib.md5(response).hexdigest().encode("utf8")
             response = (
-                f'qop="auth",nc="{nonce_count}",cnonce="{cnonce}",'
+                f'qop="auth",nc="{nonce_count:08x}",cnonce="{cnonce}",'
                 f'response="{str(response, "utf8")}"'
             )
         else:
