@@ -341,7 +341,7 @@ class SIPMessage:
         self.body: Dict[str, Any] = {}
         self.authentication: Dict[str, str] = {}
         self.raw = data
-        self.auth_match = re.compile(r'(\w+)=(\"[^\",\s+]+\"|[^ \t]+)')
+        self.auth_match = re.compile(r"(\w+)=(\"[^\",\s+]+\"|[^ \t]+)")
         self.parse(data)
 
     def summary(self) -> str:
@@ -1233,7 +1233,7 @@ class SIPClient:
             f'To: "{self.username}" '
             + f"<sip:{self.username}@{self.server}>\r\n"
         )
-        #regRequest += f"Call-ID: {self.genCallID()}\r\n"
+        # regRequest += f"Call-ID: {self.genCallID()}\r\n"
         regRequest += f'Call-ID: {request.headers["Call-ID"]}\r\n'
         regRequest += f"CSeq: {self.registerCounter.next()} REGISTER\r\n"
         regRequest += (
@@ -1747,11 +1747,7 @@ class SIPClient:
                     # At this point, it's reasonable to assume that
                     # this is caused by invalid credentials.
                     print("Seemingly invalid credentials")
-                    if (
-                        response.authentication.get("stale")
-                        == "true"
-                        == "true"
-                    ):
+                    if response.authentication.get("stale") == "true":
                         print("Stale is TRUE")
                         reg_request = self.gen_register(response)
                         self.out.sendto(
