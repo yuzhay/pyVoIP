@@ -1,15 +1,15 @@
-from typing import List, Optional, Tuple, Union
-from pyVoIP.types import KEY_PASSWORD, SOCKETS
-from pyVoIP.SIP import SIPMessage, SIPMessageType
-from pyVoIP.sock.transport import TransportMode
 import math
-import pyVoIP
 import socket
 import sqlite3
 import ssl
 import threading
 import time
+from typing import List, Optional, Tuple, Union
 
+import pyVoIP
+from pyVoIP.SIP import SIPMessage, SIPMessageType
+from pyVoIP.sock.transport import TransportMode
+from pyVoIP.types import KEY_PASSWORD, SOCKETS
 
 debug = pyVoIP.debug
 
@@ -52,7 +52,8 @@ class VoIPConnection:
             if msg.type == SIPMessageType.REQUEST:
                 addr = (msg.to["host"], msg.to["port"])
             else:
-                addr = msg.headers["Via"][0]
+                addr = msg.headers["Via"][0]["address"]
+
             self.sock.s.sendto(data, addr)
         else:
             self.conn.send(data)
@@ -254,22 +255,28 @@ class VoIPSocket(threading.Thread):
         self.conns.append(connection)
         conn_id = len(self.conns) - 1
         conn = self.buffer.cursor()
-        conn.execute(
-            """INSERT INTO "listening"
-                ("call_id", "local_tag", "remote_tag", "connection")
-                VALUES
-                (?, ?, ?, ?)""",
-            (
-                connection.call_id,
-                connection.local_tag,
-                connection.remote_tag,
-                conn_id,
-            ),
-        )
+
+        try:
+            conn.execute(
+                """INSERT INTO "listening"
+                    ("call_id", "local_tag", "remote_tag", "connection")
+                    VALUES
+                    (?, ?, ?, ?)""",
+                (
+                    connection.call_id,
+                    connection.local_tag,
+                    connection.remote_tag,
+                    conn_id,
+                ),
+            )
+        except sqlite3.IntegrityError:
+            pass
+
         try:
             self.buffer.commit()
         except sqlite3.OperationalError:
             pass
+
         conn.close()
         self.conns_lock.release()
 
@@ -282,12 +289,13 @@ class VoIPSocket(threading.Thread):
 
         to_header = message.headers["To"]
         from_header = message.headers["From"]
+
         to_host = to_header["host"]
         to_port = to_header["port"]
-        to_tag = to_header["tag"] if to_header["tag"] else None
+        to_tag = to_header["tag"] if to_header.get("tag") else ""
         from_host = from_header["host"]
         from_port = from_header["port"]
-        from_tag = from_header["tag"] if from_header["tag"] else None
+        from_tag = from_header["tag"] if from_header.get("tag") else ""
 
         if to_host == self.bind_ip and to_port == self.bind_port:
             return to_tag, from_tag
@@ -301,6 +309,8 @@ class VoIPSocket(threading.Thread):
                 return to_tag, from_tag
             elif from_host == self.bind_ip:
                 return from_tag, to_tag
+
+            return "", ""
         # If there is still not a match, guess the to or from tag based
         # on if the message. Requests except ACK likely have us as To,
         # for everthing else we're likely the From

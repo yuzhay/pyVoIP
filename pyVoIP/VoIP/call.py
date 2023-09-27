@@ -1,13 +1,13 @@
-from enum import Enum
-from pyVoIP import RTP, SIP
-from pyVoIP.VoIP.error import InvalidStateError
-from threading import Lock
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
 import audioop
 import io
-import pyVoIP
 import warnings
+from enum import Enum
+from threading import Lock
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
+import pyVoIP
+from pyVoIP import RTP, SIP
+from pyVoIP.VoIP.error import InvalidStateError
 
 __all__ = [
     "CallState",
@@ -336,8 +336,12 @@ class VoIPCall:
         warnings.simplefilter("default")
 
     def ringing(self, request: SIP.SIPMessage) -> None:
+        # call_id = request.headers["Call-ID"]
+        self.phone.call_callback(self)
+
         if self.state == CallState.RINGING:
-            self.deny()
+            # self.deny()
+            pass
         else:
             self.request = request
 
@@ -347,6 +351,7 @@ class VoIPCall:
     def deny(self) -> None:
         if self.state != CallState.RINGING:
             raise InvalidStateError("Call is not ringing")
+
         message = self.sip.gen_busy(self.request)
         self.sip.sendto(message, self.request.headers["Via"][0]["address"])
         for x in self.RTPClients:

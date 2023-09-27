@@ -7,13 +7,12 @@ once on startup, then used directly later by other modules.
 """
 import re
 
-
 Match = re.Match
 
 AUTH_MATCH = re.compile(r'(\w+)=("[^"]+"|[^ \t,]+)')
 VIA_SPLIT = re.compile(r" |;")
 TO_FROM_MATCH = re.compile(
-    r'(?P<display_name>"?[\w ]*"? )?<?(?P<uri_type>sips?):(?P<user>[\w+]+)(?P<password>:\w+)?@(?P<host>[\w.]+)(?P<port>:[0-9]+)?>?'
+    r'(?P<display_name>"?[\w \-]*"? )?<?(?P<uri_type>sips?):(?P<user>[\w+\-]+)(?P<password>:\w+)?@(?P<host>[\w.]+)(?P<port>:[0-9]+)?>?'
 )
 TO_FROM_DIRECT_MATCH = re.compile(
     r'(?P<display_name>"?[\w ]*"? )?<?(?P<uri_type>sips?):(?P<host>[\w.]+)(?P<port>:[0-9]+)?>?'

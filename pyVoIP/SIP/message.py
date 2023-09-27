@@ -1,10 +1,10 @@
 from enum import Enum, IntEnum
+from typing import Any, Callable, Dict, List, Optional, Union
+
+import pyVoIP
 from pyVoIP import regex
 from pyVoIP.SIP.error import SIPParseError
 from pyVoIP.types import TFC_HEADER
-from typing import Any, Callable, Dict, List, Optional, Union
-import pyVoIP
-
 
 debug = pyVoIP.debug
 
@@ -416,6 +416,7 @@ class SIPMessage:
 
         if header == "Via":
             for d in data:
+
                 info = regex.VIA_SPLIT.split(d)
                 _type = info[0]  # SIP Method
                 _address = info[1].split(":")  # Tuple: address, port

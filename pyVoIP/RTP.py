@@ -1,15 +1,15 @@
-from enum import Enum
-from threading import Timer
-from typing import Callable, Dict, Optional, Union
 import audioop
 import io
-import pyVoIP
 import random
 import socket
 import threading
 import time
 import warnings
+from enum import Enum
+from threading import Timer
+from typing import Callable, Dict, Optional, Union
 
+import pyVoIP
 
 __all__ = [
     "add_bytes",
@@ -349,8 +349,10 @@ class RTPClient:
 
     def stop(self) -> None:
         self.NSD = False
-        self.sin.close()
-        self.sout.close()
+        if hasattr(self, 'sin'):
+            self.sin.close()
+        if hasattr(self, 'out'):
+            self.sout.close()
 
     def read(self, length: int = 160, blocking: bool = True) -> bytes:
         if not blocking:

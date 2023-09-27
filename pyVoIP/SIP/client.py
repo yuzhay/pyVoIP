@@ -1,26 +1,20 @@
-from base64 import b16encode, b64encode
-from threading import Timer
-from typing import Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
-from pyVoIP.credentials import CredentialsManager
-from pyVoIP.SIP.error import (
-    SIPParseError,
-    InvalidAccountInfoError,
-)
-from pyVoIP.helpers import Counter
-from pyVoIP.SIP.message import (
-    SIPMessage,
-    SIPStatus,
-    SIPMessageType,
-)
-from pyVoIP.sock.transport import TransportMode
-from pyVoIP.types import KEY_PASSWORD
-import pyVoIP
 import hashlib
 import random
-import time
-import uuid
 import select
+import time
+import traceback
+import uuid
+from base64 import b16encode, b64encode
+from threading import Timer
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Tuple
 
+import pyVoIP
+from pyVoIP.credentials import CredentialsManager
+from pyVoIP.helpers import Counter
+from pyVoIP.SIP.error import InvalidAccountInfoError, SIPParseError
+from pyVoIP.SIP.message import SIPMessage, SIPMessageType, SIPStatus
+from pyVoIP.sock.transport import TransportMode
+from pyVoIP.types import KEY_PASSWORD
 
 if TYPE_CHECKING:
     from pyVoIP import RTP
@@ -80,7 +74,7 @@ class SIPClient:
     def recv(self) -> None:
         while self.NSD:
             try:
-                raw = self.s.recv(8192)
+                raw = self.s.s.recv(8192)
                 if raw != b"\x00\x00\x00\x00":
                     try:
                         message = SIPMessage(raw)
@@ -128,7 +122,7 @@ class SIPClient:
         elif message.method == "INVITE":
             if self.call_callback is None:
                 request = self.gen_busy(message)
-                self.sendto(request, message.headers["Via"]["address"])
+                self.sendto(request, message.headers["Via"][0]["address"])
             else:
                 self.call_callback(message)
         elif message.method == "BYE":
@@ -147,20 +141,21 @@ class SIPClient:
                 )
             except Exception:
                 debug("BYE Answer failed falling back to server as target")
-                self.sendto(response, message.headers["Via"]["address"])
+                self.sendto(response, message.headers["Via"][0]["address"])
         elif message.method == "ACK":
             return
         elif message.method == "CANCEL":
             # TODO: If callCallback is None, the call doesn't exist, 481
             self.call_callback(message)  # type: ignore
             response = self.gen_ok(message)
-            self.sendto(response, message.headers["Via"]["address"])
+            self.sendto(response, message.headers["Via"][0]["address"])
         elif message.method == "OPTIONS":
             if self.call_callback:
                 response = str(self.call_callback(message))
             else:
                 response = self._gen_options_response(message)
-            self.sendto(response, message.headers["Via"]["address"])
+
+            self.sendto(response, message.headers["Via"][0]["address"])
         else:
             debug("TODO: Add 400 Error on non processable request")
 
@@ -300,15 +295,17 @@ class SIPClient:
     def gen_digest(
         self, request: SIPMessage, body: str = ""
     ) -> Dict[str, str]:
-        server = request.headers["From"]["host"]
+
+        server = request.headers["To"]["host"]
         realm = request.authentication["realm"]
         user = request.headers["From"]["user"]
+
         credentials = self.credentials_manager.get(server, realm, user)
         username = credentials["username"]
         password = credentials["password"]
         nonce = request.authentication["nonce"]
         method = request.headers["CSeq"]["method"]
-        uri = f"sip:{self.server};transport={self.transport_mode}"
+        uri = f"sip:{server};transport={self.transport_mode}"
         algo = request.authentication.get("algorithm", "md5").lower()
         if algo in ["sha512-256", "sha512-256-sess"]:
             hash_func = self._hash_sha512_256
@@ -317,9 +314,13 @@ class SIPClient:
         else:
             hash_func = self._hash_md5
         # Get new method values
-        qop = request.authentication.get("qop", None).pop(0)
-        opaque = request.authentication.get("opaque", None)
-        userhash = request.authentication.get("userhash", False)
+        qop = request.authentication.get("qop", None)
+        if not qop:
+            qop = None
+        else:
+            qop = qop.pop(0)
+        opaque = request.authentication.get("opaque", None) or ""
+        userhash = request.authentication.get("userhash", False) or ""
 
         if qop:
             # Use new hash method
@@ -365,6 +366,7 @@ class SIPClient:
                 "realm": realm,
                 "nonce": nonce,
                 "algorithm": algo,
+                "uri": uri,
                 "digest": hash_func(HA3.encode("utf8")),
                 "username": username,
                 "opaque": opaque,
@@ -379,10 +381,11 @@ class SIPClient:
 
         if request.authentication["method"].lower() == "digest":
             digest = self.gen_digest(request)
+
             response = (
                 f'{header}: Digest username="{digest["username"]}",'
                 + f'realm="{digest["realm"]}",nonce="{digest["nonce"]}",'
-                + f'uri="{digest["uri"]}",response="{digest["digest"]}",'
+                + f'uri="{digest.get("uri")}",response="{digest["digest"]}",'
                 + f'algorithm={digest["algorithm"]}'
             )
             if "qop" in digest:
@@ -409,6 +412,7 @@ class SIPClient:
             )
             username = credentials["username"]
             password = credentials["password"]
+
             userid_pass = f"{username}:{password}".encode("utf8")
             encoded = str(b64encode(userid_pass), "utf8")
             response = f"{header}: Basic {encoded}\r\n"
@@ -810,7 +814,7 @@ class SIPClient:
         )
         self.sendto(invite)
         debug("Invited")
-        response = SIPMessage(self.s.recv(8192))
+        response = SIPMessage(self.s.s.recv(8192))
 
         while (
             response.status != SIPStatus(401)
@@ -822,7 +826,7 @@ class SIPClient:
                 break
             debug(f"Received Response: {response.summary()}")
             self.parse_message(response)
-            response = SIPMessage(self.s.recv(8192))
+            response = SIPMessage(self.s.s.recv(8192))
 
         debug(f"Received Response: {response.summary()}")
 
@@ -878,7 +882,7 @@ class SIPClient:
         debug("Message")
         auth = False
         while True:
-            response = SIPMessage(self.s.recv(8192))
+            response = SIPMessage(self.s.s.recv(8192))
             debug(f"Received Response: {response.summary()}")
             self.parse_message(response)
             if response.status == SIPStatus(100):
@@ -912,7 +916,7 @@ class SIPClient:
                 request.headers["Contact"]["port"],
             ),
         )
-        response = SIPMessage(self.s.recv(8192))
+        response = SIPMessage(self.s.s.recv(8192))
         if response.status == SIPStatus(401):
             #  Requires password
             auth = self.gen_authorization(response)
@@ -1079,7 +1083,7 @@ class SIPClient:
         subRequest = self.gen_subscribe(lastresponse)
         self.sendto(subRequest)
 
-        response = SIPMessage(self.s.recv(8192))
+        response = SIPMessage(self.s.s.recv(8192))
 
         debug(f'Got response to subscribe: {str(response.heading, "utf8")}')
 
@@ -1100,6 +1104,6 @@ class SIPClient:
 
             ready = select.select([self.s], [], [], self.register_timeout)
             if ready[0]:
-                resp = self.s.recv(8192)
+                resp = self.s.s.recv(8192)
             response = SIPMessage(resp)
         return response

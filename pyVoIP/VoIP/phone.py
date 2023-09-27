@@ -1,20 +1,18 @@
+import random
+import time
+import traceback
 from enum import Enum
-from pyVoIP import SIP, RTP
+from threading import Lock, Timer
+from typing import Callable, Dict, List, Optional, Type
+
+import pyVoIP
+from pyVoIP import RTP, SIP
 from pyVoIP.credentials import CredentialsManager
 from pyVoIP.sock.transport import TransportMode
 from pyVoIP.types import KEY_PASSWORD
 from pyVoIP.VoIP.call import CallState, VoIPCall
-from pyVoIP.VoIP.error import (
-    InvalidRangeError,
-    InvalidStateError,
-    NoPortsAvailableError,
-)
-from threading import Timer, Lock
-from typing import Callable, Dict, List, Optional, Type
-import pyVoIP
-import random
-import time
-
+from pyVoIP.VoIP.error import (InvalidRangeError, InvalidStateError,
+                               NoPortsAvailableError)
 
 __all__ = [
     "PhoneStatus",
@@ -84,6 +82,7 @@ class VoIPPhone:
         self.threads: List[Timer] = []
         # Allows you to find call ID based off thread.
         self.threadLookup: Dict[Timer, str] = {}
+
         self.sip = self.sipClass(
             server,
             port,
@@ -120,6 +119,10 @@ class VoIPPhone:
                 self._callback_RESP_Busy(request)
             elif request.status == SIP.SIPStatus.REQUEST_TERMINATED:
                 self._callback_RESP_Terminated(request)
+
+        # call_id = request.headers.get("Call-ID")
+        # if (self.calls.get(call_id)):
+        #     self.call_callback(self.calls[call_id])
         return None  # mypy needs this for some reason.
 
     def get_status(self) -> PhoneStatus:
@@ -314,6 +317,8 @@ class VoIPPhone:
     ) -> VoIPCall:
         port = self.request_port()
         medias = {}
+
+
         if not payload_types:
             payload_types = [RTP.PayloadType.PCMU, RTP.PayloadType.EVENT]
         medias[port] = {}
